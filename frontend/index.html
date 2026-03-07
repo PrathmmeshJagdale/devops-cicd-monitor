@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DevOps CI/CD Monitor</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-card: #1c2128;
+    --bg-hover: #21262d;
+    --border: #30363d;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #484f58;
+    --accent-blue: #58a6ff;
+    --accent-green: #3fb950;
+    --accent-red: #f85149;
+    --accent-yellow: #d29922;
+    --accent-purple: #bc8cff;
+    --accent-orange: #ffa657;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .header-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+  .header-subtitle { font-size: 12px; color: var(--text-secondary); }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .live-indicator {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--accent-green);
+  }
+  .live-dot {
+    width: 8px; height: 8px;
+    background: var(--accent-green);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .last-updated { font-size: 12px; color: var(--text-muted); }
+
+   /* LAYOUT */
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+  /* STATS GRID */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--accent-blue); }
+  .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 32px; font-weight: 700; line-height: 1; }
+  .stat-sub { font-size: 12px; color: var(--text-muted); }
+  .stat-bar {
+    height: 4px; background: var(--border);
+    border-radius: 2px; margin-top: 4px; overflow: hidden;
+  }
+  .stat-bar-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
+
+  /* CONTENT GRID */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 1024px) { .content-grid { grid-template-columns: 1fr; } }
+
+  /* CARDS */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .card-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+  }
+  td {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-hover); }
+
+  /* STATUS BADGES */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .badge-success { background: rgba(63,185,80,0.15); color: var(--accent-green); border: 1px solid rgba(63,185,80,0.3); }
+  .badge-failure { background: rgba(248,81,73,0.15); color: var(--accent-red); border: 1px solid rgba(248,81,73,0.3); }
+  .badge-running { background: rgba(88,166,255,0.15); color: var(--accent-blue); border: 1px solid rgba(88,166,255,0.3); }
+  .badge-aborted { background: rgba(139,148,158,0.15); color: var(--text-secondary); border: 1px solid var(--border); }
+  .badge-critical { background: rgba(248,81,73,0.15); color: var(--accent-red); border: 1px solid rgba(248,81,73,0.3); }
+  .badge-warning { background: rgba(210,153,34,0.15); color: var(--accent-yellow); border: 1px solid rgba(210,153,34,0.3); }
+
+   /* PIPELINE CARDS */
+  .pipeline-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    padding: 16px;
+  }
+  .pipeline-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .pipeline-card:hover { transform: translateY(-1px); border-color: var(--accent-blue); }
+  .pipeline-card.success { border-left: 3px solid var(--accent-green); }
+  .pipeline-card.failure { border-left: 3px solid var(--accent-red); }
+  .pipeline-card.running { border-left: 3px solid var(--accent-blue); }
+  .pipeline-card.aborted { border-left: 3px solid var(--text-muted); }
+  .pipeline-name { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pipeline-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .pipeline-branch { font-size: 11px; color: var(--accent-blue); }
+  .pipeline-build { font-size: 11px; color: var(--text-muted); }
+  .pipeline-author { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+  .pipeline-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ALERT LIST */
+  .alert-list { padding: 8px; }
+  .alert-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+  .alert-item:hover { background: var(--bg-hover); }
+  .alert-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+  .alert-content { flex: 1; min-width: 0; }
+  .alert-job { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .alert-msg { font-size: 12px; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .alert-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* SERVICE HEALTH */
+  .health-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    padding: 16px;
+  }
+  .health-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .health-name { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+  .health-status {
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .health-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .health-up { color: var(--accent-green); }
+  .health-up .health-dot { background: var(--accent-green); animation: pulse 2s infinite; }
+  .health-down { color: var(--accent-red); }
+  .health-down .health-dot { background: var(--accent-red); }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    margin-bottom: 20px;
+    width: fit-content;
+  }
+  .nav-tab {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+    border: none;
+    background: transparent;
+  }
+  .nav-tab.active { background: var(--bg-card); color: var(--text-primary); }
+  .nav-tab:hover:not(.active) { color: var(--text-primary); }
+
+  /* SECTION */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* REFRESH BTN */
+  .btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+  .btn-primary { background: var(--accent-blue); border-color: var(--accent-blue); color: #000; }
+  .btn-primary:hover { background: #79c0ff; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 48px;
+    color: var(--text-muted);
+  }
+  .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state-text { font-size: 14px; }
+
+  /* LOADING */
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-hover) 50%, var(--bg-secondary) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+    height: 14px;
+    margin: 4px 0;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-primary); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">⚡</div>
+    <div>
+      <div class="header-title">DevOps CI/CD Monitor</div>
+      <div class="header-subtitle">Pipeline Automation Platform</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-indicator">
+      <div class="live-dot"></div>
+      LIVE
+    </div>
+    <div class="last-updated" id="lastUpdated">Updating...</div>
+    <button class="btn" onclick="refreshAll()">↻ Refresh</button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="container">
+
+  <!-- NAV TABS -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('overview')">📊 Overview</button>
+    <button class="nav-tab" onclick="switchTab('pipelines')">🔧 Pipelines</button>
+    <button class="nav-tab" onclick="switchTab('alerts')">🚨 Alerts</button>
+    <button class="nav-tab" onclick="switchTab('retries')">🔁 Retries</button>
+    <button class="nav-tab" onclick="switchTab('reports')">📋 Reports</button>
+    <button class="nav-tab" onclick="switchTab('health')">💚 Health</button>
+  </div>
+
+  <!-- OVERVIEW TAB -->
+  <div id="tab-overview" class="section active">
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-label">Total Builds</div>
+        <div class="stat-value" id="totalBuilds" style="color:var(--accent-blue)">—</div>
+        <div class="stat-sub">All time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Success Rate</div>
+        <div class="stat-value" id="successRate" style="color:var(--accent-green)">—</div>
+        <div class="stat-sub">Last 50 builds</div>
+        <div class="stat-bar"><div class="stat-bar-fill" id="successBar" style="background:var(--accent-green);width:0%"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Failed Builds</div>
+        <div class="stat-value" id="failedBuilds" style="color:var(--accent-red)">—</div>
+        <div class="stat-sub">Requires attention</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Running Now</div>
+        <div class="stat-value" id="runningBuilds" style="color:var(--accent-blue)">—</div>
+        <div class="stat-sub">Active pipelines</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active Alerts</div>
+        <div class="stat-value" id="activeAlerts" style="color:var(--accent-red)">—</div>
+        <div class="stat-sub">Unresolved</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Auto Retries</div>
+        <div class="stat-value" id="totalRetries" style="color:var(--accent-orange)">—</div>
+        <div class="stat-sub">Self-healed</div>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚡ Recent Pipeline Builds</div>
+          <span class="card-badge badge badge-running" id="recentCount">Loading...</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Job Name</th>
+                <th>Build</th>
+                <th>Status</th>
+                <th>Branch</th>
+                <th>Author</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody id="recentBuildsTable">
+              <tr><td colspan="6" class="empty-state">Loading builds...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🚨 Recent Alerts</div>
+          <span class="card-badge badge badge-failure" id="alertCount">0</span>
+        </div>
+        <div class="alert-list" id="alertList">
+          <div class="empty-state"><div class="empty-state-icon">🔔</div><div class="empty-state-text">Loading alerts...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIPELINES TAB -->
+  <div id="tab-pipelines" class="section">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🔧 All Pipeline Jobs</div>
+        <button class="btn btn-primary" onclick="loadPipelines()">↻ Refresh</button>
+      </div>
+      <div class="pipeline-grid" id="pipelineGrid">
+        <div class="empty-state" style="grid-column:1/-1">Loading pipelines...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERTS TAB -->
+  <div id="tab-alerts" class="section">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🚨 Alert History</div>
+        <button class="btn btn-primary" onclick="loadAlerts()">↻ Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Job</th><th>Build</th><th>Severity</th><th>Message</th><th>Status</th><th>Time</th></tr>
+          </thead>
+          <tbody id="alertsTable">
+            <tr><td colspan="6" class="empty-state">Loading alerts...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- RETRIES TAB -->
+  <div id="tab-retries" class="section">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🔁 Retry History</div>
+        <button class="btn btn-primary" onclick="loadRetries()">↻ Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Job</th><th>Original Build</th><th>Attempt</th><th>Status</th><th>Message</th><th>Time</th></tr>
+          </thead>
+          <tbody id="retriesTable">
+            <tr><td colspan="6" class="empty-state">Loading retries...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORTS TAB -->
+  <div id="tab-reports" class="section">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📋 Generated Reports</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="generateReport()">⚡ Generate Now</button>
+          <button class="btn" onclick="loadReports()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Total Builds</th><th>Success</th><th>Failed</th><th>Rate</th><th>Alerts</th><th>Email</th></tr>
+          </thead>
+          <tbody id="reportsTable">
+            <tr><td colspan="7" class="empty-state">Loading reports...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEALTH TAB -->
+  <div id="tab-health" class="section">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">💚 Service Health</div>
+        <button class="btn btn-primary" onclick="checkHealth()">↻ Check All</button>
+      </div>
+      <div class="health-grid" id="healthGrid">
+        <div class="empty-state" style="grid-column:1/-1">Checking services...</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const API = {
+  pipeline: '/api/pipelines',
+  alert:    '/api/alerts',
+  retry:    '/api/retry',
+  report:   '/api/reports',
+  auth:     '/api/auth'
+};
+
+const SERVICES = [
+  { name: 'Auth Service',     url: `${API.auth}/health` },
+  { name: 'Pipeline Service', url: `${API.pipeline}/health` },
+  { name: 'Alert Service',    url: `${API.alert}/health` },
+  { name: 'Retry Service',    url: `${API.retry}/health` },
+  { name: 'Report Service',   url: `${API.report}/health` }
+];
+
+async function fetchJSON(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+function statusBadge(status) {
+  const map = {
+    SUCCESS: '<span class="badge badge-success">✓ Success</span>',
+    FAILURE: '<span class="badge badge-failure">✗ Failed</span>',
+    RUNNING: '<span class="badge badge-running">↻ Running</span>',
+    ABORTED: '<span class="badge badge-aborted">⊘ Aborted</span>'
+  };
+  return map[status] || `<span class="badge badge-aborted">${status}</span>`;
+}
+
+function severityBadge(s) {
+  return s === 'CRITICAL'
+    ? '<span class="badge badge-critical">🔴 Critical</span>'
+    : '<span class="badge badge-warning">🟡 Warning</span>';
+}
+
+function retryBadge(s) {
+  const map = {
+    SUCCESS: '<span class="badge badge-success">✓ Success</span>',
+    TRIGGERED: '<span class="badge badge-running">↻ Triggered</span>',
+    FAILED: '<span class="badge badge-failure">✗ Failed</span>',
+    MAX_RETRIES_REACHED: '<span class="badge badge-aborted">⊘ Max Reached</span>'
+  };
+  return map[s] || `<span class="badge badge-aborted">${s}</span>`;
+}
+
+function formatDuration(ms) {
+  if (!ms) return '—';
+  const s = Math.floor(ms / 1000);
+  return s < 60 ? `${s}s` : `${Math.floor(s/60)}m ${s%60}s`;
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '—';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h/24)}d ago`;
+}
+
+async function loadStats() {
+  const [pStats, aStats, rStats] = await Promise.all([
+    fetchJSON(`${API.pipeline}/stats`),
+    fetchJSON(`${API.alert}/stats`),
+    fetchJSON(`${API.retry}/stats`)
+  ]);
+
+  if (pStats) {
+    document.getElementById('totalBuilds').textContent = pStats.totalBuilds ?? '—';
+    document.getElementById('failedBuilds').textContent = pStats.failedBuilds ?? '—';
+    document.getElementById('runningBuilds').textContent = pStats.runningBuilds ?? '—';
+    const rate = pStats.successRate ?? 0;
+    document.getElementById('successRate').textContent = rate + '%';
+    document.getElementById('successBar').style.width = rate + '%';
+  }
+  if (aStats) {
+    document.getElementById('activeAlerts').textContent = aStats.activeAlerts ?? '—';
+    document.getElementById('alertCount').textContent = (aStats.totalAlerts ?? 0) + ' total';
+  }
+  if (rStats) {
+    document.getElementById('totalRetries').textContent = rStats.totalRetries ?? '—';
+  }
+}
+
+async function loadRecentBuilds() {
+  const builds = await fetchJSON(API.pipeline);
+  const tbody = document.getElementById('recentBuildsTable');
+
+  if (!builds || builds.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">🔧</div><div class="empty-state-text">No builds yet</div></div></td></tr>';
+    return;
+  }
+
+  document.getElementById('recentCount').textContent = builds.length + ' builds';
+  tbody.innerHTML = builds.slice(0,15).map(b => `
+    <tr>
+      <td style="color:var(--text-primary);font-weight:500">${b.jobName}</td>
+      <td style="color:var(--accent-blue)">#${b.buildNumber}</td>
+      <td>${statusBadge(b.status)}</td>
+      <td><span style="color:var(--accent-purple);font-size:12px">⑂ ${b.branch || 'main'}</span></td>
+      <td style="font-size:12px">${b.triggeredBy || '—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${formatDuration(b.durationMs)}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadRecentAlerts() {
+  const alerts = await fetchJSON(API.alert);
+  const container = document.getElementById('alertList');
+
+  if (!alerts || alerts.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No alerts — all systems healthy</div></div>';
+    return;
+  }
+
+  container.innerHTML = alerts.slice(0,8).map(a => `
+    <div class="alert-item">
+      <div class="alert-icon">${a.severity === 'CRITICAL' ? '🔴' : '🟡'}</div>
+      <div class="alert-content">
+        <div class="alert-job">${a.jobName}</div>
+        <div class="alert-msg">${a.message}</div>
+        <div class="alert-time">${timeAgo(a.createdAt)} · ${a.resolved ? '✅ Resolved' : '⚠️ Active'}</div>
+      </div>
+      ${!a.resolved ? `<button class="btn" style="font-size:11px;padding:4px 8px" onclick="resolveAlert(${a.id})">Resolve</button>` : ''}
+    </div>
+  `).join('');
+}
+
+async function loadPipelines() {
+  const builds = await fetchJSON(API.pipeline);
+  const grid = document.getElementById('pipelineGrid');
+
+  if (!builds || builds.length === 0) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🔧</div><div class="empty-state-text">No pipeline data yet</div></div>';
+    return;
+  }
+
+  const jobMap = {};
+  builds.forEach(b => {
+    if (!jobMap[b.jobName] || new Date(b.createdAt) > new Date(jobMap[b.jobName].createdAt)) {
+      jobMap[b.jobName] = b;
+    }
+  });
+
+  grid.innerHTML = Object.values(jobMap).map(b => `
+    <div class="pipeline-card ${b.status?.toLowerCase()}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="pipeline-name">${b.jobName}</div>
+        ${statusBadge(b.status)}
+      </div>
+      <div class="pipeline-author">👤 ${b.triggeredBy || 'system'}</div>
+      <div class="pipeline-time">🕐 ${timeAgo(b.createdAt)} · ${formatDuration(b.durationMs)}</div>
+      <div class="pipeline-meta">
+        <span class="pipeline-branch">⑂ ${b.branch || 'main'}</span>
+        <span class="pipeline-build">#${b.buildNumber}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadAlerts() {
+  const alerts = await fetchJSON(API.alert);
+  const tbody = document.getElementById('alertsTable');
+
+  if (!alerts || alerts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">No alerts found</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = alerts.map(a => `
+    <tr>
+      <td style="color:var(--text-primary);font-weight:500">${a.jobName}</td>
+      <td style="color:var(--accent-blue)">#${a.buildNumber}</td>
+      <td>${severityBadge(a.severity)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.message}</td>
+      <td>${a.resolved ? '<span class="badge badge-success">✓ Resolved</span>' : '<span class="badge badge-failure">Active</span>'}</td>
+      <td style="font-size:12px;white-space:nowrap">${timeAgo(a.createdAt)}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadRetries() {
+  const retries = await fetchJSON(API.retry);
+  const tbody = document.getElementById('retriesTable');
+
+  if (!retries || retries.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">No retry records found</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = retries.map(r => `
+    <tr>
+      <td style="color:var(--text-primary);font-weight:500">${r.jobName}</td>
+      <td style="color:var(--accent-blue)">#${r.originalBuildNumber}</td>
+      <td style="color:var(--accent-orange)">Attempt ${r.retryAttempt}</td>
+      <td>${retryBadge(r.status)}</td>
+      <td style="font-size:12px">${r.message}</td>
+      <td style="font-size:12px;white-space:nowrap">${timeAgo(r.createdAt)}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadReports() {
+  const reports = await fetchJSON(API.report);
+  const tbody = document.getElementById('reportsTable');
+
+  if (!reports || reports.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No reports generated yet. Click "Generate Now".</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = reports.map(r => `
+    <tr>
+      <td style="color:var(--text-primary);white-space:nowrap">${new Date(r.createdAt).toLocaleString()}</td>
+      <td style="color:var(--accent-blue)">${r.totalBuilds}</td>
+      <td style="color:var(--accent-green)">${r.successfulBuilds}</td>
+      <td style="color:var(--accent-red)">${r.failedBuilds}</td>
+      <td>
+        <span style="color:${r.successRate >= 80 ? 'var(--accent-green)' : r.successRate >= 60 ? 'var(--accent-yellow)' : 'var(--accent-red)'}">
+          ${r.successRate?.toFixed(1)}%
+        </span>
+      </td>
+      <td style="color:var(--accent-yellow)">${r.totalAlerts}</td>
+      <td>${r.emailSent ? '<span class="badge badge-success">✓ Sent</span>' : '<span class="badge badge-aborted">Not sent</span>'}</td>
+    </tr>
+  `).join('');
+}
+
+async function checkHealth() {
+  const grid = document.getElementById('healthGrid');
+  grid.innerHTML = SERVICES.map(s => `
+    <div class="health-card">
+      <div class="health-name">${s.name}</div>
+      <div class="health-status health-up">
+        <div class="health-dot"></div> Checking...
+      </div>
+    </div>
+  `).join('');
+
+  const results = await Promise.all(
+    SERVICES.map(async s => {
+      const res = await fetchJSON(s.url);
+      return { name: s.name, up: res !== null && res.status === 'UP' };
+    })
+  );
+
+  grid.innerHTML = results.map(r => `
+    <div class="health-card">
+      <div class="health-name">${r.name}</div>
+      <div class="health-status ${r.up ? 'health-up' : 'health-down'}">
+        <div class="health-dot"></div>
+        ${r.up ? 'UP' : 'DOWN'}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function resolveAlert(id) {
+  await fetch(`${API.alert}/${id}/resolve`, { method: 'PUT' });
+  loadRecentAlerts();
+  loadStats();
+}
+
+async function generateReport() {
+  const btn = event.target;
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+  await fetch(`${API.report}/generate`, { method: 'POST' });
+  await loadReports();
+  btn.textContent = '⚡ Generate Now';
+  btn.disabled = false;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  event.target.classList.add('active');
+
+  const loaders = {
+    pipelines: loadPipelines,
+    alerts: loadAlerts,
+    retries: loadRetries,
+    reports: loadReports,
+    health: checkHealth
+  };
+  if (loaders[tab]) loaders[tab]();
+}
+
+async function refreshAll() {
+  document.getElementById('lastUpdated').textContent = 'Refreshing...';
+  await Promise.all([loadStats(), loadRecentBuilds(), loadRecentAlerts()]);
+  document.getElementById('lastUpdated').textContent =
+    'Updated ' + new Date().toLocaleTimeString();
+}
+
+// Auto-refresh every 30 seconds
+setInterval(refreshAll, 30000);
+
+// Initial load
+refreshAll();
+checkHealth();
+</script>
+</body>
+</html>

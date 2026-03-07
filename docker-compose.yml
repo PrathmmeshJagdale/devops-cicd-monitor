@@ -1,0 +1,207 @@
+version: "3.9"
+
+networks:
+  devops-network:
+    driver: bridge
+
+volumes:
+  mysql-auth-data:
+  mysql-pipeline-data:
+  mysql-alert-data:
+  mysql-retry-data:
+  mysql-report-data:
+
+services:
+
+  # ─── DATABASES ───────────────────────────────────────
+
+  mysql-auth:
+    image: mysql:8.0
+    container_name: mysql-auth
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: auth_db
+    volumes:
+      - mysql-auth-data:/var/lib/mysql
+    networks:
+      - devops-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot1234"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mysql-pipeline:
+    image: mysql:8.0
+    container_name: mysql-pipeline
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: pipeline_db
+    volumes:
+      - mysql-pipeline-data:/var/lib/mysql
+    networks:
+      - devops-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot1234"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mysql-alert:
+    image: mysql:8.0
+    container_name: mysql-alert
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: alert_db
+    volumes:
+      - mysql-alert-data:/var/lib/mysql
+    networks:
+      - devops-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot1234"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mysql-retry:
+    image: mysql:8.0
+    container_name: mysql-retry
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: retry_db
+    volumes:
+      - mysql-retry-data:/var/lib/mysql
+    networks:
+      - devops-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot1234"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mysql-report:
+    image: mysql:8.0
+    container_name: mysql-report
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: report_db
+    volumes:
+      - mysql-report-data:/var/lib/mysql
+    networks:
+      - devops-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot1234"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ─── MICROSERVICES ────────────────────────────────────
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-auth:3306/auth_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root1234
+    depends_on:
+      mysql-auth:
+        condition: service_healthy
+    networks:
+      - devops-network
+    restart: unless-stopped
+
+  pipeline-service:
+    build:
+      context: ./pipeline-service
+      dockerfile: Dockerfile
+    container_name: pipeline-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-pipeline:3306/pipeline_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root1234
+    depends_on:
+      mysql-pipeline:
+        condition: service_healthy
+    networks:
+      - devops-network
+    restart: unless-stopped
+
+  alert-service:
+    build:
+      context: ./alert-service
+      dockerfile: Dockerfile
+    container_name: alert-service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-alert:3306/alert_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root1234
+    depends_on:
+      mysql-alert:
+        condition: service_healthy
+    networks:
+      - devops-network
+    restart: unless-stopped
+
+  retry-service:
+    build:
+      context: ./retry-service
+      dockerfile: Dockerfile
+    container_name: retry-service
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-retry:3306/retry_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root1234
+    depends_on:
+      mysql-retry:
+        condition: service_healthy
+    networks:
+      - devops-network
+    restart: unless-stopped
+
+  report-service:
+    build:
+      context: ./report-service
+      dockerfile: Dockerfile
+    container_name: report-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-report:3306/report_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root1234
+    depends_on:
+      mysql-report:
+        condition: service_healthy
+    networks:
+      - devops-network
+    restart: unless-stopped
+
+  # ─── FRONTEND ─────────────────────────────────────────
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - auth-service
+      - pipeline-service
+      - alert-service
+      - retry-service
+      - report-service
+    networks:
+      - devops-network
+    restart: unless-stopped
