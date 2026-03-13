@@ -1,6 +1,5 @@
 pipeline {
     agent any
-
     environment {
         AWS_REGION            = 'us-east-2'
         AWS_ACCOUNT_ID        = '219850556995'
@@ -10,95 +9,112 @@ pipeline {
         AWS_ACCESS_KEY_ID     = credentials('aws-access-key')
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
     }
-
     stages {
-
         stage('Checkout') {
             steps {
-                echo '========== Checking out code =========='
-                git branch: 'main',
+                git branch: 'devops',
                     credentialsId: 'github-credentials',
                     url: 'https://github.com/PrathmmeshJagdale/devops-cicd-monitor.git'
             }
         }
-
         stage('Build Docker Images') {
             steps {
-                echo '========== Building Docker Images =========='
-                sh '''
-                    docker build -t auth-service:${BUILD_NUMBER} ./auth-service
-                    docker build -t pipeline-service:${BUILD_NUMBER} ./pipeline-service
-                    docker build -t alert-service:${BUILD_NUMBER} ./alert-service
-                    docker build -t retry-service:${BUILD_NUMBER} ./retry-service
-                    docker build -t report-service:${BUILD_NUMBER} ./report-service
-                    docker build -t frontend:${BUILD_NUMBER} ./frontend
-                '''
+                sh """
+                    docker build -t ${PROJECT_NAME}/auth-service:${IMAGE_TAG} ./auth-service
+                    docker build -t ${PROJECT_NAME}/pipeline-service:${IMAGE_TAG} ./pipeline-service
+                    docker build -t ${PROJECT_NAME}/alert-service:${IMAGE_TAG} ./alert-service
+                    docker build -t ${PROJECT_NAME}/retry-service:${IMAGE_TAG} ./retry-service
+                    docker build -t ${PROJECT_NAME}/report-service:${IMAGE_TAG} ./report-service
+                    docker build -t ${PROJECT_NAME}/frontend:${IMAGE_TAG} ./frontend
+                """
             }
         }
-
         stage('Tag Docker Images') {
             steps {
-                echo '========== Tagging Images for ECR =========='
-                sh '''
-                    docker tag auth-service:${BUILD_NUMBER} ${ECR_REGISTRY}/${PROJECT_NAME}/auth-service:${BUILD_NUMBER}
-                    docker tag pipeline-service:${BUILD_NUMBER} ${ECR_REGISTRY}/${PROJECT_NAME}/pipeline-service:${BUILD_NUMBER}
-                    docker tag alert-service:${BUILD_NUMBER} ${ECR_REGISTRY}/${PROJECT_NAME}/alert-service:${BUILD_NUMBER}
-                    docker tag retry-service:${BUILD_NUMBER} ${ECR_REGISTRY}/${PROJECT_NAME}/retry-service:${BUILD_NUMBER}
-                    docker tag report-service:${BUILD_NUMBER} ${ECR_REGISTRY}/${PROJECT_NAME}/report-service:${BUILD_NUMBER}
-                    docker tag frontend:${BUILD_NUMBER} ${ECR_REGISTRY}/${PROJECT_NAME}/frontend:${BUILD_NUMBER}
-                '''
+                sh """
+                    docker tag ${PROJECT_NAME}/auth-service:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/auth-service:${IMAGE_TAG}
+                    docker tag ${PROJECT_NAME}/auth-service:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/auth-service:latest
+
+                    docker tag ${PROJECT_NAME}/pipeline-service:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/pipeline-service:${IMAGE_TAG}
+                    docker tag ${PROJECT_NAME}/pipeline-service:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/pipeline-service:latest
+
+                    docker tag ${PROJECT_NAME}/alert-service:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/alert-service:${IMAGE_TAG}
+                    docker tag ${PROJECT_NAME}/alert-service:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/alert-service:latest
+
+                    docker tag ${PROJECT_NAME}/retry-service:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/retry-service:${IMAGE_TAG}
+                    docker tag ${PROJECT_NAME}/retry-service:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/retry-service:latest
+
+                    docker tag ${PROJECT_NAME}/report-service:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/report-service:${IMAGE_TAG}
+                    docker tag ${PROJECT_NAME}/report-service:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/report-service:latest
+
+                    docker tag ${PROJECT_NAME}/frontend:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/frontend:${IMAGE_TAG}
+                    docker tag ${PROJECT_NAME}/frontend:${IMAGE_TAG} ${ECR_REGISTRY}/${PROJECT_NAME}/frontend:latest
+                """
             }
         }
-
         stage('Push to ECR') {
             steps {
-                echo '========== Logging into AWS ECR =========='
-                sh '''
+                sh """
                     aws ecr get-login-password --region ${AWS_REGION} | \
                     docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
-                    echo '========== Pushing Images to ECR =========='
-                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/auth-service:${BUILD_NUMBER}
-                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/pipeline-service:${BUILD_NUMBER}
-                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/alert-service:${BUILD_NUMBER}
-                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/retry-service:${BUILD_NUMBER}
-                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/report-service:${BUILD_NUMBER}
-                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/frontend:${BUILD_NUMBER}
-                '''
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/auth-service:${IMAGE_TAG}
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/auth-service:latest
+
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/pipeline-service:${IMAGE_TAG}
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/pipeline-service:latest
+
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/alert-service:${IMAGE_TAG}
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/alert-service:latest
+
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/retry-service:${IMAGE_TAG}
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/retry-service:latest
+
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/report-service:${IMAGE_TAG}
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/report-service:latest
+
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/frontend:${IMAGE_TAG}
+                    docker push ${ECR_REGISTRY}/${PROJECT_NAME}/frontend:latest
+                """
             }
         }
-
         stage('Cleanup Local Images') {
             steps {
-                echo '========== Cleaning up local Docker images =========='
-                sh '''
-                    docker rmi auth-service:${BUILD_NUMBER} || true
-                    docker rmi pipeline-service:${BUILD_NUMBER} || true
-                    docker rmi alert-service:${BUILD_NUMBER} || true
-                    docker rmi retry-service:${BUILD_NUMBER} || true
-                    docker rmi report-service:${BUILD_NUMBER} || true
-                    docker rmi frontend:${BUILD_NUMBER} || true
+                sh """
+                    docker rmi ${PROJECT_NAME}/auth-service:${IMAGE_TAG} || true
+                    docker rmi ${PROJECT_NAME}/pipeline-service:${IMAGE_TAG} || true
+                    docker rmi ${PROJECT_NAME}/alert-service:${IMAGE_TAG} || true
+                    docker rmi ${PROJECT_NAME}/retry-service:${IMAGE_TAG} || true
+                    docker rmi ${PROJECT_NAME}/report-service:${IMAGE_TAG} || true
+                    docker rmi ${PROJECT_NAME}/frontend:${IMAGE_TAG} || true
 
-                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/auth-service:${BUILD_NUMBER} || true
-                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/pipeline-service:${BUILD_NUMBER} || true
-                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/alert-service:${BUILD_NUMBER} || true
-                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/retry-service:${BUILD_NUMBER} || true
-                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/report-service:${BUILD_NUMBER} || true
-                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/frontend:${BUILD_NUMBER} || true
-                '''
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/auth-service:${IMAGE_TAG} || true
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/auth-service:latest || true
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/pipeline-service:${IMAGE_TAG} || true
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/pipeline-service:latest || true
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/alert-service:${IMAGE_TAG} || true
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/alert-service:latest || true
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/retry-service:${IMAGE_TAG} || true
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/retry-service:latest || true
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/report-service:${IMAGE_TAG} || true
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/report-service:latest || true
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/frontend:${IMAGE_TAG} || true
+                    docker rmi ${ECR_REGISTRY}/${PROJECT_NAME}/frontend:latest || true
+                """
             }
         }
     }
-
     post {
         success {
-            echo "========== Pipeline SUCCESS — Images pushed with tag: ${BUILD_NUMBER} =========="
+            echo 'Pipeline completed successfully - images pushed to ECR with build number and latest tags'
         }
         failure {
-            echo '========== Pipeline FAILED — Check logs above =========='
+            echo 'Pipeline failed - check logs above'
         }
         always {
             cleanWs()
         }
     }
 }
+        
+                    
