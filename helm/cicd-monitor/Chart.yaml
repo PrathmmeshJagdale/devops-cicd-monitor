@@ -1,0 +1,14 @@
+apiVersion: v2
+name: cicd-monitor
+description: DevOps CI/CD Pipeline Monitor - Microservices Helm Chart
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - devops
+  - cicd
+  - monitoring
+  - microservices
+maintainers:
+  - name: Prathmmesh Jagdale
+    email: prathmeshjagdale30@gmail.com

@@ -1,0 +1,19 @@
+{{- range $key, $service := .Values }}
+{{- if and (kindIs "map" $service) (hasKey $service "enabled") ($service.enabled) ($service.env) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $service.name }}-config
+  namespace: {{ $.Values.namespace }}
+  labels:
+    app: {{ $service.name }}
+    environment: {{ $.Values.global.environment }}
+    managed-by: helm
+data:
+  {{- range $envKey, $envVal := $service.env }}
+  {{ $envKey }}: {{ $envVal | quote }}
+  {{- end }}
+...
+{{- end }}
+{{- end }}

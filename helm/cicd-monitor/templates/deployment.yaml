@@ -1,0 +1,60 @@
+{{- range $key, $service := .Values }}
+{{- if and (kindIs "map" $service) (hasKey $service "enabled") ($service.enabled) (hasKey $service "service") }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $service.name }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+    app: {{ $service.name }}
+    environment: {{ $.Values.global.environment }}
+    managed-by: helm
+spec:
+  replicas: {{ $service.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ $service.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $service.name }}
+        environment: {{ $.Values.global.environment }}
+    spec:
+      containers:
+        - name: {{ $service.name }}
+          image: {{ $service.image.repository }}:{{ $service.image.tag }}
+          imagePullPolicy: {{ $.Values.global.pullPolicy }}
+          ports:
+            - containerPort: {{ $service.service.targetPort }}
+          {{- if $service.env }}
+          env:
+            {{- range $envKey, $envVal := $service.env }}
+            - name: {{ $envKey }}
+              value: {{ $envVal | quote }}
+            {{- end }}
+          {{- end }}
+          resources:
+            requests:
+              memory: {{ $service.resources.requests.memory }}
+              cpu: {{ $service.resources.requests.cpu }}
+            limits:
+              memory: {{ $service.resources.limits.memory }}
+              cpu: {{ $service.resources.limits.cpu }}
+          livenessProbe:
+            httpGet:
+              path: {{ $service.livenessProbe.path }}
+              port: {{ $service.livenessProbe.port }}
+            initialDelaySeconds: {{ $service.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ $service.livenessProbe.periodSeconds }}
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ $service.readinessProbe.path }}
+              port: {{ $service.readinessProbe.port }}
+            initialDelaySeconds: {{ $service.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ $service.readinessProbe.periodSeconds }}
+            failureThreshold: 3
+...
+{{- end }}
+{{- end }}

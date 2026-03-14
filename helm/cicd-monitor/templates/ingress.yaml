@@ -1,0 +1,58 @@
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cicd-monitor-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    environment: {{ .Values.global.environment }}
+    managed-by: helm
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8081
+          - path: /api/pipelines
+            pathType: Prefix
+            backend:
+              service:
+                name: pipeline-service
+                port:
+                  number: 8082
+          - path: /api/alerts
+            pathType: Prefix
+            backend:
+              service:
+                name: alert-service
+                port:
+                  number: 8083
+          - path: /api/retry
+            pathType: Prefix
+            backend:
+              service:
+                name: retry-service
+                port:
+                  number: 8084
+          - path: /api/reports
+            pathType: Prefix
+            backend:
+              service:
+                name: report-service
+                port:
+                  number: 8085
+{{- end }}

@@ -1,0 +1,248 @@
+# Global values shared across all services
+global:
+  registry: 219850556995.dkr.ecr.us-east-2.amazonaws.com
+  projectName: devops-cicd
+  imageTag: "latest"
+  pullPolicy: IfNotPresent
+  environment: production
+
+# Auth Service
+authService:
+  name: auth-service
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: 219850556995.dkr.ecr.us-east-2.amazonaws.com/devops-cicd/auth-service
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8081
+    targetPort: 8081
+  env:
+    SPRING_DATASOURCE_URL: jdbc:mysql://mysql-auth:3306/auth_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    SPRING_DATASOURCE_USERNAME: root
+    SPRING_DATASOURCE_PASSWORD: root1234
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "300m"
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    cpuUtilization: 70
+  livenessProbe:
+    path: /api/auth/health
+    port: 8081
+    initialDelaySeconds: 60
+    periodSeconds: 30
+  readinessProbe:
+    path: /api/auth/health
+    port: 8081
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+# Pipeline Service
+pipelineService:
+  name: pipeline-service
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: 219850556995.dkr.ecr.us-east-2.amazonaws.com/devops-cicd/pipeline-service
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8082
+    targetPort: 8082
+  env:
+    SPRING_DATASOURCE_URL: jdbc:mysql://mysql-pipeline:3306/pipeline_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    SPRING_DATASOURCE_USERNAME: root
+    SPRING_DATASOURCE_PASSWORD: root1234
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "300m"
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    cpuUtilization: 70
+  livenessProbe:
+    path: /api/pipelines/health
+    port: 8082
+    initialDelaySeconds: 60
+    periodSeconds: 30
+  readinessProbe:
+    path: /api/pipelines/health
+    port: 8082
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+# Alert Service
+alertService:
+  name: alert-service
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: 219850556995.dkr.ecr.us-east-2.amazonaws.com/devops-cicd/alert-service
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8083
+    targetPort: 8083
+  env:
+    SPRING_DATASOURCE_URL: jdbc:mysql://mysql-alert:3306/alert_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    SPRING_DATASOURCE_USERNAME: root
+    SPRING_DATASOURCE_PASSWORD: root1234
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "300m"
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    cpuUtilization: 70
+  livenessProbe:
+    path: /api/alerts/health
+    port: 8083
+    initialDelaySeconds: 60
+    periodSeconds: 30
+  readinessProbe:
+    path: /api/alerts/health
+    port: 8083
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+# Retry Service
+retryService:
+  name: retry-service
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: 219850556995.dkr.ecr.us-east-2.amazonaws.com/devops-cicd/retry-service
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8084
+    targetPort: 8084
+  env:
+    SPRING_DATASOURCE_URL: jdbc:mysql://mysql-retry:3306/retry_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    SPRING_DATASOURCE_USERNAME: root
+    SPRING_DATASOURCE_PASSWORD: root1234
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "300m"
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    cpuUtilization: 70
+  livenessProbe:
+    path: /api/retry/health
+    port: 8084
+    initialDelaySeconds: 60
+    periodSeconds: 30
+  readinessProbe:
+    path: /api/retry/health
+    port: 8084
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+# Report Service
+reportService:
+  name: report-service
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: 219850556995.dkr.ecr.us-east-2.amazonaws.com/devops-cicd/report-service
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8085
+    targetPort: 8085
+  env:
+    SPRING_DATASOURCE_URL: jdbc:mysql://mysql-report:3306/report_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    SPRING_DATASOURCE_USERNAME: root
+    SPRING_DATASOURCE_PASSWORD: root1234
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "300m"
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    cpuUtilization: 70
+  livenessProbe:
+    path: /api/reports/health
+    port: 8085
+    initialDelaySeconds: 60
+    periodSeconds: 30
+  readinessProbe:
+    path: /api/reports/health
+    port: 8085
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+# Frontend
+frontend:
+  name: frontend
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: 219850556995.dkr.ecr.us-east-2.amazonaws.com/devops-cicd/frontend
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+  livenessProbe:
+    path: /
+    port: 80
+    initialDelaySeconds: 10
+    periodSeconds: 30
+  readinessProbe:
+    path: /
+    port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+# MySQL - one per service
+mysql:
+  image: mysql:8.0
+  rootPassword: root1234
+
+# Ingress
+ingress:
+  enabled: true
+  className: nginx
+  host: ""
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+
+# Namespace
+namespace: cicd-monitor

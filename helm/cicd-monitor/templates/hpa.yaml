@@ -1,0 +1,29 @@
+{{- range $key, $service := .Values }}
+{{- if and (kindIs "map" $service) (hasKey $service "hpa") ($service.hpa.enabled) }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $service.name }}-hpa
+  namespace: {{ $.Values.namespace }}
+  labels:
+    app: {{ $service.name }}
+    environment: {{ $.Values.global.environment }}
+    managed-by: helm
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $service.name }}
+  minReplicas: {{ $service.hpa.minReplicas }}
+  maxReplicas: {{ $service.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $service.hpa.cpuUtilization }}
+...
+{{- end }}
+{{- end }}

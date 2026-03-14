@@ -1,0 +1,61 @@
+{{- range $key, $service := .Values }}
+{{- if and (kindIs "map" $service) (hasKey $service "enabled") ($service.enabled) (hasKey $service "env") }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-{{ $service.name | replace "-service" "" }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+    app: mysql-{{ $service.name | replace "-service" "" }}
+    managed-by: helm
+spec:
+  serviceName: mysql-{{ $service.name | replace "-service" "" }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-{{ $service.name | replace "-service" "" }}
+  template:
+    metadata:
+      labels:
+        app: mysql-{{ $service.name | replace "-service" "" }}
+    spec:
+      containers:
+        - name: mysql
+          image: {{ $.Values.mysql.image }}
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: {{ $.Values.mysql.rootPassword | quote }}
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp2
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-{{ $service.name | replace "-service" "" }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+    app: mysql-{{ $service.name | replace "-service" "" }}
+    managed-by: helm
+spec:
+  type: ClusterIP
+  selector:
+    app: mysql-{{ $service.name | replace "-service" "" }}
+  ports:
+    - protocol: TCP
+      port: 3306
+      targetPort: 3306
+{{- end }}
+{{- end }}

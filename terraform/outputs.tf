@@ -37,3 +37,13 @@ output "nat_gateway_ip" {
   description = "NAT Gateway public IP"
   value       = aws_eip.nat.public_ip
 }
+
+output "ebs_csi_role_arn" {
+  description = "EBS CSI Driver IAM Role ARN"
+  value       = aws_iam_role.ebs_csi_driver.arn
+}
+
+output "oidc_provider_arn" {
+  description = "OIDC Provider ARN"
+  value       = aws_iam_openid_connect_provider.eks.arn
+}
