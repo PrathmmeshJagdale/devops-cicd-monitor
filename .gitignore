@@ -22,3 +22,30 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+crash.log
+
+# Kubernetes / kubectl
+kubeconfig
+*.kubeconfig
+.kube/
+
+# Helm
+*.tgz
+Chart.lock
+
+# ArgoCD
+argocd-*.token
+
+# Secrets / credentials
+*secret*.yaml
+*secrets*.yml
+*.pem
+*.key
+*credentials*
