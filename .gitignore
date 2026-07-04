@@ -49,3 +49,4 @@ argocd-*.token
 *.pem
 *.key
 *credentials*
+slack-values.yaml
