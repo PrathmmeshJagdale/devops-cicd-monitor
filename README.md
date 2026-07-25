@@ -46,93 +46,118 @@ This platform **fully automates the CI/CD lifecycle** by:
   init: {
     'theme': 'dark',
     'themeVariables': {
-      'edgeLabelBackground': 'transparent',
-      'tertiaryColor': 'transparent'
+      'background': '#0b0f19',
+      'primaryColor': '#1e293b',
+      'primaryTextColor': '#f8fafc',
+      'lineColor': '#475569',
+      'edgeLabelBackground': '#0f172a',
+      'tertiaryColor': '#0f172a'
     }
   }
 }%%
-graph TD
-    %% README Badge Matching Color Scheme (Grey Completely Removed)
-    classDef dev fill:#1e3a8a,stroke:#3b82f6,stroke-width:1px,color:#fff;
-    classDef git fill:#dc2626,stroke:#111827,stroke-width:1px,color:#fff;
-    classDef jenkins fill:#ca8a04,stroke:#111827,stroke-width:1px,color:#fff;
-    classDef ecr fill:#ea580c,stroke:#111827,stroke-width:1px,color:#fff;
-    classDef argo fill:#f97316,stroke:#111827,stroke-width:1px,color:#fff;
+graph TB
+    %% ==========================================
+    %% GLOBAL STYLES & DEFINITIONS
+    %% ==========================================
+    classDef actor fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#fff;
+    classDef git fill:#991b1b,stroke:#ef4444,stroke-width:1px,color:#fff;
+    classDef ci fill:#854d0e,stroke:#eab308,stroke-width:1px,color:#fff;
+    classDef registry fill:#c2410c,stroke:#f97316,stroke-width:1px,color:#fff;
+    classDef cd fill:#7c2d12,stroke:#ea580c,stroke-width:2px,color:#fff;
     
-    %% Infrastructure & Microservices Custom Colors
-    classDef svc fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff;
-    classDef db fill:#000000,stroke:#2563eb,stroke-width:1.5px,color:#38bdf8;
-    classDef monitor fill:#16a34a,stroke:#111827,stroke-width:1px,color:#fff;
+    classDef ingress fill:#0369a1,stroke:#0ea5e9,stroke-width:2px,color:#fff;
+    classDef app fill:#334155,stroke:#94a3b8,stroke-width:1px,color:#fff;
+    classDef db fill:#020617,stroke:#2563eb,stroke-width:2px,color:#38bdf8;
+    classDef obs fill:#166534,stroke:#22c55e,stroke-width:1px,color:#fff;
 
-    %% Base Pipeline Infrastructure Nodes
-    DEV[👨‍💻 DEVELOPER]:::dev
-    WEB[🌐 GITHUB WEBHOOK]:::git
-    JENK[🤖 JENKINS EC2 BUILD SERVER]:::jenkins
-    ECR[📦 AWS ECR REGISTRY]:::ecr
-    ARGO[🐙 ARGOCD GITOPS ENGINE]:::argo
+    %% ==========================================
+    %% DEV & DEVOPS PIPELINE TIER
+    %% ==========================================
+    DEV[👨‍💻 Platform Developer]:::actor
+    REPO_SRC[🌐 GitHub: Application Source]:::git
+    JENKINS[🤖 Jenkins Build Server]:::ci
+    ECR[📦 AWS Elastic Container Registry]:::registry
+    REPO_MAN[🗂️ GitHub: GitOps Manifests]:::git
+    ARGOCD[🐙 ArgoCD Deployment Engine]:::cd
 
-    subgraph EKS [☸️ PRODUCTION AWS EKS CLUSTER]
-        subgraph AUTH [Auth App]
-            AS[auth-service :8081]:::svc
-            AD[(mysql-auth)]:::db
-            AS === AD
-        end
+    %% Pipeline Logic Links
+    DEV -->|1. git push| REPO_SRC
+    REPO_SRC -->|2. Webhook Trigger| INGRESS
+    JENKINS -->|3a. Push Image| ECR
+    JENKINS -->|3b. Update Image Tag| REPO_MAN
+    REPO_MAN -->|4. Pull State| ARGOCD
+    ARGOCD -->|5. Declarative Sync| INGRESS
+
+    %% ==========================================
+    %% AWS EKS CLUSTER SUBGRAPH
+    %% ==========================================
+    subgraph EKS [☸️ AWS EKS PRODUCTION CLUSTER]
         
-        subgraph PIPE [Pipeline App]
-            PS[pipeline-svc :8082]:::svc
-            PD[(mysql-pipeline)]:::db
-            PS === PD
-        end
+        %% Entry Point
+        INGRESS[🌐 AWS ALB / NGINX Ingress Controller]:::ingress
 
-        subgraph ALER [Alert App]
-            ALS[alert-service :8083]:::svc
-            ALD[(mysql-alert)]:::db
-            ALS === ALD
+        %% Application Tier (Public/Private Virtual Subnets)
+        subgraph APP_TIER [📱 Application Services Subnet]
+            UI[frontend-ui<br/>Port :80]:::app
+            AUTH[auth-service<br/>Port :8081]:::app
+            PIPE[pipeline-svc<br/>Port :8082]:::app
+            ALER[alert-service<br/>Port :8083]:::app
+            RETR[retry-service<br/>Port :8084]:::app
+            REPO[report-service<br/>Port :8085]:::app
         end
+        style APP_TIER fill:#0f172a,stroke:#475569,stroke-width:1px
 
-        subgraph RETR [Retry App]
-            RS[retry-service :8084]:::svc
-            RD[(mysql-retry)]:::db
-            RS === RD
+        %% Data Tier (Private Isolated Subnet)
+        subgraph DATA_TIER [🔒 Isolated Database Private Subnet]
+            DB_AUTH[(mysql-auth)]:::db
+            DB_PIPE[(mysql-pipeline)]:::db
+            DB_ALER[(mysql-alert)]:::db
+            DB_RETR[(mysql-retry)]:::db
+            DB_REPO[(mysql-report)]:::db
         end
+        style DATA_TIER fill:#020617,stroke:#1e3a8a,stroke-width:1px,stroke-dasharray: 5 5
 
-        subgraph REPO [Report App]
-            RPS[report-service :8085]:::svc
-            RPD[(mysql-report)]:::db
-            RPS === RPD
-        end
+        %% Traffic Routing Internal
+        INGRESS --> UI
+        INGRESS --> AUTH
+        INGRESS --> PIPE
 
-        subgraph FRONT [Frontend]
-            FS[frontend UI :80]:::svc
-        end
+        %% Service to Database Explicit Topologies
+        AUTH ===> DB_AUTH
+        PIPE ===> DB_PIPE
+        ALER ===> DB_ALER
+        RETR ===> DB_RETR
+        REPO ===> DB_REPO
     end
-    style EKS fill:#0f172a,stroke:#38bdf8,stroke-width:3px,color:#fff
-    style AUTH fill:#1e293b,stroke:#2563eb,stroke-width:1px,color:#fff
-    style PIPE fill:#1e293b,stroke:#2563eb,stroke-width:1px,color:#fff
-    style ALER fill:#1e293b,stroke:#2563eb,stroke-width:1px,color:#fff
-    style RETR fill:#1e293b,stroke:#2563eb,stroke-width:1px,color:#fff
-    style REPO fill:#1e293b,stroke:#2563eb,stroke-width:1px,color:#fff
-    style FRONT fill:#1e293b,stroke:#2563eb,stroke-width:1px,color:#fff
+    style EKS fill:#030712,stroke:#0ea5e9,stroke-width:3px
 
-    subgraph MON [📊 OBSERVABILITY STACK]
-        PROM[Prometheus Time-Series]:::monitor
-        GRAF[Grafana Visual Dashboards]:::monitor
-        ALERTM[AlertManager Core]:::monitor
+    %% Jenkins to Cluster Boundary Hook
+    INGRESS -.->|Webhook Proxy| JENKINS
+
+    %% ==========================================
+    %% OBSERVABILITY STACK
+    %% ==========================================
+    subgraph OBS_STACK [📊 Platform Observability Stack]
+        PROM[Prometheus Server]:::obs
+        GRAF[Grafana Dashboards]:::obs
+        AM[AlertManager Core]:::obs
+        
         PROM --> GRAF
-        PROM --> ALERTM
+        PROM --> AM
     end
-    style MON fill:#0f172a,stroke:#16a34a,stroke-width:2px,color:#fff
+    style OBS_STACK fill:#030712,stroke:#22c55e,stroke-width:2px
 
-    %% High-Visibility Pipeline Connections (Dark Blue Letter Colors Configured Here)
-    DEV -->|<font color='#2563eb'><b>1. git push</b></font>| WEB
-    WEB -->|<font color='#2563eb'><b>2. api trigger</b></font>| JENK
-    JENK -->|<font color='#2563eb'><b>3. container push</b></font>| ECR
-    ECR -->|<font color='#2563eb'><b>4. sync webhook</b></font>| ARGO
-    ARGO -->|<font color='#2563eb'><b>5. GitOps deploy</b></font>| EKS
-    EKS -->|<font color='#2563eb'><b>6. metrics scrape</b></font>| PROM
-    
-    %% Main Line Routing Strokes
-    linkStyle 0,1,2,3,4,5 stroke:#38bdf8,stroke-width:2px;
+    %% Telemetry Links
+    APP_TIER -.->|6. Scrape Metrics| PROM
+
+    %% ==========================================
+    %% LINK STYLES (Enforces High-Contrast Colors)
+    %% ==========================================
+    linkStyle 0,1,2,3,4,5 stroke:#0ea5e9,stroke-width:2.5px;
+    linkStyle 6,7,8 stroke:#38bdf8,stroke-width:1.5px;
+    linkStyle 9,10,11,12,13 stroke:#2563eb,stroke-width:2px;
+    linkStyle 14 stroke:#f59e0b,stroke-width:1.5px,stroke-dasharray: 4 4;
+    linkStyle 17 stroke:#22c55e,stroke-width:1.5px,stroke-dasharray: 5 5;
 ```
 
 ## 📸 Live Dashboard Screenshots
